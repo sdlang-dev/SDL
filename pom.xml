@@ -6,11 +6,16 @@
 
     <groupId>com.singingbush</groupId>
     <artifactId>sdlang</artifactId>
-    <version>2.2.0</version>
+    <version>2.1.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
     <name>SDLang</name>
     <description>Support for SDLang (Simple Declarative Language)</description>
     <url>https://github.com/sdlang-dev/SDL</url>
     <inceptionYear>2011</inceptionYear>
+
+    <modules>
+        <module>annotations</module>
+    </modules>
 
     <licenses>
         <license>
@@ -92,6 +97,14 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.singingbush</groupId>
+            <artifactId>sdl-annotations</artifactId>
+            <version>${project.version}</version>
+            <optional>true</optional>
+        </dependency>
+
     </dependencies>
 
     <build>
