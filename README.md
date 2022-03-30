@@ -2,7 +2,6 @@
 ============
 
 ![Java CI](https://github.com/sdlang-dev/SDL/workflows/Java%20CI/badge.svg)
-[![Build Status](https://travis-ci.org/SingingBush/SDL.svg?branch=master)](https://travis-ci.org/SingingBush/SDL)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.singingbush/sdlang/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.singingbush/sdlang)
 [![Javadocs](https://www.javadoc.io/badge/com.singingbush/sdlang.svg)](https://www.javadoc.io/doc/com.singingbush/sdlang)
 [![Coverage Status](https://coveralls.io/repos/github/SingingBush/SDL/badge.svg?branch=master)](https://coveralls.io/github/SingingBush/SDL?branch=master)
@@ -19,7 +18,7 @@ Releases for v2 are available from Maven Central under the com.singingbush group
     <dependency>
         <groupId>com.singingbush</groupId>
         <artifactId>sdlang</artifactId>
-        <version>2.1.0</version>
+        <version>2.1.1</version>
     </dependency>
 ```
 
