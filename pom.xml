@@ -123,7 +123,7 @@
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
-                <version>7.0.1</version>
+                <version>7.0.4</version>
                 <executions>
                     <execution>
                         <goals>
@@ -226,7 +226,7 @@
                         <artifactId>maven-gpg-plugin</artifactId>
                         <version>3.0.1</version>
                         <configuration>
-                            <keyname>6E394A59C56281A1C7BCB31CBB1163024293DF16</keyname>
+                            <keyname>1CFD47C233D6CF9898D60D0849B6A0E07204E47A</keyname>
                         </configuration>
                         <executions>
                             <execution>
