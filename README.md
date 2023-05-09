@@ -18,7 +18,7 @@ Releases for v2 are available from Maven Central under the com.singingbush group
     <dependency>
         <groupId>com.singingbush</groupId>
         <artifactId>sdlang</artifactId>
-        <version>2.1.1</version>
+        <version>2.2.0</version>
     </dependency>
 ```
 
