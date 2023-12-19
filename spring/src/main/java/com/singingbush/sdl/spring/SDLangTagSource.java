@@ -13,16 +13,12 @@ import java.util.stream.Collectors;
 
 public class SDLangTagSource extends PropertySource<List<Tag>> {
 
-    //private final Pattern pattern;
     private final Pattern indexedPattern;
-    //private final Pattern attributePattern;
 
-    public SDLangTagSource(final String name, final @NonNull List<Tag> source) {
+    public SDLangTagSource(final @NonNull String name, final @NonNull List<Tag> source) {
         super(name, source);
 
-        //this.pattern = Pattern.compile("^(\\S+)(?>\\[(\\S+)])$");
         this.indexedPattern = Pattern.compile("(\\S+)\\[(\\d+)]");
-        //this.attributePattern = Pattern.compile("(\\S+)\\['(\\d+)']");
     }
 
 
@@ -37,19 +33,13 @@ public class SDLangTagSource extends PropertySource<List<Tag>> {
         if (ObjectUtils.isEmpty(valueExpression)) {
             throw new IllegalArgumentException("arg cannot be empty");
         }
-        // the value expression could be a name for an SDL tag or a name with attribute, eg: "person|age" (I'd wanted to do "person[age]")
+        // the value expression could be a name for an SDL tag or a name with attribute, eg: "person|age"
 
         final String[] parts = valueExpression.split("\\|", 2);
-//        final Matcher matcher = pattern.matcher(valueExpression);
-//        if (matcher.find()) {
-//            super.logger.debug(String.format("Could find by %s and %s", matcher.group(1), matcher.group(2)));
-//        }
 
         if (Arrays.stream(parts).anyMatch(ObjectUtils::isEmpty)) {
             throw new IllegalArgumentException("Invalid expression");
         }
-
-        //super.logger.debug(Arrays.asList(parts).toString());
 
         // find the Tag by name
         final Optional<Tag> result = getSDLangTagByName(parts[0], getSource());

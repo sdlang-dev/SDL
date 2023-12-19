@@ -9,6 +9,7 @@ import org.springframework.core.io.support.PropertySourceFactory;
 import org.springframework.lang.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -16,8 +17,8 @@ import java.util.List;
 public class SdlPropertySourceFactory implements PropertySourceFactory {
     @Override
     public PropertySource<?> createPropertySource(@Nullable String name, EncodedResource resource) throws IOException {
-        try {
-            final List<Tag> tags = new Parser(new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)).parse();
+        try(final InputStream i = resource.getInputStream()) {
+            final List<Tag> tags = new Parser(new InputStreamReader(i, StandardCharsets.UTF_8)).parse();
 
             return name != null ? new SDLangTagSource(name, tags) : new SDLangTagSource("sdl", tags);
         } catch (final SDLParseException e) {
