@@ -20,8 +20,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -30,6 +28,8 @@ import java.io.Serializable;
 import java.io.StringReader;
 import java.io.Writer;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -342,14 +342,11 @@ public class Tag implements Serializable {
 	private final String name;
 
     private String comment;
-	private List<SdlValue> values = new ArrayList();
-	private List<SdlValue> valuesView = Collections.unmodifiableList(values);
+    private LineCommentStyle commentStyle;
+	private List<SdlValue<?>> values = new ArrayList<>();
 	private Map<String,String> attributeToNamespace = new HashMap<>();
-	//private Map<String,String> attributeToNamespaceView = Collections.unmodifiableMap(attributeToNamespace);
-	private SortedMap<String,SdlValue> attributes = new TreeMap<>();
-	//private SortedMap<String,SdlValue> attributesView = Collections.unmodifiableSortedMap(attributes);
+	private SortedMap<String,SdlValue<?>> attributes = new TreeMap<>();
 	private List<Tag> children = new ArrayList<>();
-	private List<Tag> childrenView = Collections.unmodifiableList(children);
 
 	/**
 	 * Creates an empty tag.
@@ -398,7 +395,7 @@ public class Tag implements Serializable {
 	 *
 	 * @param child The child to add
 	 */
-	public void addChild(Tag child) {
+	public void addChild(final Tag child) {
 		children.add(child);
 	}
 
@@ -408,7 +405,7 @@ public class Tag implements Serializable {
 	 * @param child The child to remove
 	 * @return true if the child exists and is removed
 	 */
-	public boolean removeChild(Tag child) {
+	public boolean removeChild(final Tag child) {
 		return children.remove(child);
 	}
 
@@ -419,7 +416,7 @@ public class Tag implements Serializable {
 	 * @param value The value to be set.
 	 * @throws IllegalArgumentException if the value is not a legal SDL type
 	 */
-	public void setValue(SdlValue value) {
+	public void setValue(SdlValue<?> value) {
 		if(values.isEmpty()) {
             addValue(value);
         } else {
@@ -434,7 +431,7 @@ public class Tag implements Serializable {
      * @since 2.0.0
 	 */
 	@Nullable
-	public SdlValue getSdlValue() {
+	public SdlValue<?> getSdlValue() {
         return values.isEmpty() ? null : values.get(0);
 	}
 
@@ -612,13 +609,13 @@ public class Tag implements Serializable {
 	 * @param name The name of the children from which values are retrieved
 	 * @return A list of values (or lists of values)
 	 */
-	public List getChildrenValues(final String name) {
-        final ArrayList results = new ArrayList();
+	public List<Object> getChildrenValues(final String name) {
+        final ArrayList<Object> results = new ArrayList<>();
 
         final List<Tag> children = getChildren(name);
 
 		for(final Tag c : children) {
-            final List values = c.getValues();
+            final List<Object> values = c.getValues();
 			if(values.isEmpty()) {
 			    results.add(null);
             } else if(values.size()==1) {
@@ -638,7 +635,7 @@ public class Tag implements Serializable {
 	 *
 	 * @param value The value to add
 	 */
-	public void addValue(SdlValue value) {
+	public void addValue(final SdlValue<?> value) {
 		values.add(value);
 	}
 
@@ -648,7 +645,7 @@ public class Tag implements Serializable {
 	 * @param value The value to remove
 	 * @return true If the value exists and is removed
 	 */
-	public boolean removeValue(SdlValue value) {
+	public boolean removeValue(final SdlValue<?> value) {
 		return values.remove(value);
 	}
 
@@ -658,7 +655,7 @@ public class Tag implements Serializable {
 	 * @return An immutable view of the values.
 	 */
 	public List<Object> getValues() {
-		return valuesView.stream()
+		return values.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(values).stream()
             .filter(Objects::nonNull)
             .map(SdlValue::getValue)
             .collect(Collectors.toList());
@@ -691,7 +688,7 @@ public class Tag implements Serializable {
 	 *     identifier (see {@link SDL#validateIdentifier(String)}) or the
 	 *     value is not a legal SDL type.
 	 */
-	public void setAttribute(String key, SdlValue value) {
+	public void setAttribute(String key, SdlValue<?> value) {
 		setAttribute("", key, value);
 	}
 
@@ -708,12 +705,14 @@ public class Tag implements Serializable {
 	 *     namespace is non-blank and is not a legal SDL identifier, or the
 	 *     value is not a legal SDL type
 	 */
-	public void setAttribute(@Nullable String namespace, String key, SdlValue value) {
-		if(namespace==null)
-			namespace="";
+	public void setAttribute(@Nullable String namespace, String key, SdlValue<?> value) {
+		if(namespace==null) {
+            namespace="";
+        }
 
-		if(namespace.length()!=0)
-			SDL.validateIdentifier(namespace);
+		if(!namespace.isEmpty()) {
+            SDL.validateIdentifier(namespace);
+        }
 		SDL.validateIdentifier(key);
 
 		attributeToNamespace.put(key, namespace);
@@ -728,7 +727,7 @@ public class Tag implements Serializable {
 	 */
 	@Nullable
 	public Object getAttribute(final String key) {
-        final SdlValue value = attributes.get(key);
+        final SdlValue<?> value = attributes.get(key);
         return value != null ? value.getValue() : null;
 	}
 
@@ -747,7 +746,7 @@ public class Tag implements Serializable {
 	 *
 	 * @return An immutable view of the attributes.
 	 */
-	public SortedMap<String, SdlValue> getAttributes() {
+	public SortedMap<String, SdlValue<?>> getAttributes() {
 		return Collections.unmodifiableSortedMap(attributes);
 	}
 
@@ -760,13 +759,13 @@ public class Tag implements Serializable {
 	 *     identifier (see {@link SDL#validateIdentifier(String)}), or any value
 	 *     is not a legal SDL type
 	 */
-	public void setAttributes(Map<String,SdlValue> attributes) {
+	public void setAttributes(final Map<String,SdlValue<?>> attributes) {
 		this.attributes.clear();
 
 		if(attributes!=null) {
 
 			// this is required to ensure validation
-			for(Entry<String,SdlValue> e : attributes.entrySet())
+			for(Entry<String,SdlValue<?>> e : attributes.entrySet())
 				setAttribute(e.getKey(), e.getValue());
 		}
 	}
@@ -810,7 +809,7 @@ public class Tag implements Serializable {
 	 * @return An immutable view of the children.
 	 */
 	public List<Tag> getChildren() {
-		return childrenView;
+		return children.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(children);
 	}
 
 	/**
@@ -821,15 +820,14 @@ public class Tag implements Serializable {
 	 * @return An immutable view of the children
 	 */
 	public List<Tag> getChildren(boolean recursively) {
-		if(!recursively)
-			return childrenView;
+		if(!recursively) {
+            return getChildren();
+        }
 
-		ArrayList<Tag> kids = new ArrayList();
-		for(Tag t:children) {
+		final ArrayList<Tag> kids = new ArrayList<>();
+		for(final Tag t : children) {
 			kids.add(t);
-
-			if(recursively)
-				kids.addAll(t.getChildren(true));
+            kids.addAll(t.getChildren(true));
 		}
 
 		return Collections.unmodifiableList(kids);
@@ -857,8 +855,24 @@ public class Tag implements Serializable {
         return comment;
     }
 
+    /**
+     * @param comment a single line of text that will precede the tag when serialised
+     * @since 2.1.0
+     * @deprecated please use {@link Tag#setComment(String, LineCommentStyle)}
+     */
+    @Deprecated
     public void setComment(final String comment) {
+        this.setComment(comment, LineCommentStyle.CPP);
+    }
+
+    /**
+     * @param comment a single line of text that will precede the tag when serialised
+     * @param commentStyle either C++ style "//", bash style "#", or lua style "--"
+     * @since 2.3.0
+     */
+    public void setComment(final String comment, final LineCommentStyle commentStyle) {
         this.comment = comment;
+        this.commentStyle = commentStyle;
     }
 
     /**
@@ -870,7 +884,7 @@ public class Tag implements Serializable {
 	 * @return This tag after adding all the children read from the reader
 	 */
 	public Tag read(final URL url) throws IOException, SDLParseException {
-		return read(new InputStreamReader(url.openStream(), "UTF8"));
+		return read(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8));
 	}
 
 	/**
@@ -882,7 +896,7 @@ public class Tag implements Serializable {
 	 * @return This tag after adding all the children read from the reader
 	 */
 	public Tag read(final File file) throws IOException, SDLParseException {
-		return read(new InputStreamReader(new FileInputStream(file), "UTF8"));
+		return read(new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
 	}
 
 	/**
@@ -936,8 +950,7 @@ public class Tag implements Serializable {
 	 * @throws IOException If there is an IO problem during the write operation
 	 */
 	public void write(File file, boolean includeRoot) throws IOException {
-		write(new OutputStreamWriter(new FileOutputStream(file),"UTF8"),
-				includeRoot);
+		write(new OutputStreamWriter(Files.newOutputStream(file.toPath()),StandardCharsets.UTF_8), includeRoot);
 	}
 
 	/**
@@ -948,16 +961,14 @@ public class Tag implements Serializable {
 	 *        element, if false only the children will be written
 	 * @throws IOException If there is an IO problem during the write operation
 	 */
-	public void write(Writer writer, boolean includeRoot) throws IOException {
-		String newLine = System.getProperty("line.separator");
-
+	public void write(final Writer writer, boolean includeRoot) throws IOException {
 		if(includeRoot) {
 			writer.write(toString());
 		} else {
-			for(Iterator i=children.iterator();i.hasNext();) {
+			for(final Iterator<Tag> i = children.iterator(); i.hasNext();) {
 				writer.write(String.valueOf(i.next()));
 				if(i.hasNext())
-					writer.write(newLine);
+					writer.write(System.lineSeparator());
 			}
 		}
 
@@ -983,7 +994,7 @@ public class Tag implements Serializable {
 	 * TODO: break up long lines using the backslash
 	 */
 	private String toString(@Nullable String linePrefix) {
-		String newLine = System.getProperty("line.separator");
+		String newLine = System.lineSeparator();
 
 		if(linePrefix==null)
 			linePrefix="";
@@ -993,7 +1004,7 @@ public class Tag implements Serializable {
 		if(comment != null && !comment.isEmpty()) {
             final String[] lines = comment.split("\n");
             for (final String line : lines) {
-                builder.append("// ").append(line).append(newLine).append(linePrefix);
+                builder.append(commentStyle.getValue()).append(" ").append(line).append(newLine).append(linePrefix);
             }
         }
 
@@ -1008,7 +1019,7 @@ public class Tag implements Serializable {
 		}
 		// output values
 		if(values != null && !values.isEmpty()) {
-            for(final SdlValue value : values) {
+            for(final SdlValue<?> value : values) {
 
                 if(skipValueSpace) {
                     skipValueSpace=false;
@@ -1030,28 +1041,27 @@ public class Tag implements Serializable {
 
 		// output attributes
 		if(attributes != null && !attributes.isEmpty()) {
-			for(Iterator<Entry<String,SdlValue>> i = attributes.entrySet().iterator(); i.hasNext();) {
-				builder.append(" ");
+            for (Entry<String, SdlValue<?>> e : attributes.entrySet()) {
+                builder.append(" ");
 
-                final Entry<String,SdlValue> e = i.next();
-				final String key=e.getKey();
+                final String key = e.getKey();
                 final String attNamespace = attributeToNamespace.get(key);
 
-				if(attNamespace != null && !attNamespace.isEmpty()) {
+                if (attNamespace != null && !attNamespace.isEmpty()) {
                     builder.append(attNamespace).append(":");
                 }
-				builder.append(key).append("=");
-				builder.append(attributes.get(key).getText());
-			}
+                builder.append(key).append("=");
+                builder.append(attributes.get(key).getText());
+            }
 		}
 
 		// output children
 		if(children != null && !children.isEmpty()) {
-			builder.append(" {" + newLine);
+			builder.append(" {").append(newLine);
 			for(final Tag t : children) {
 				builder.append(t.toString(linePrefix + "    ") + newLine);
 			}
-			builder.append(linePrefix + "}");
+			builder.append(linePrefix).append("}");
 		}
 
 		return builder.toString();
@@ -1064,19 +1074,16 @@ public class Tag implements Serializable {
         final Tag tag = (Tag) o;
         return Objects.equals(namespace, tag.namespace) &&
             Objects.equals(name, tag.name) &&
+            // ignore comments and comment style
             Objects.equals(values, tag.values) &&
-            Objects.equals(valuesView, tag.valuesView) &&
             Objects.equals(attributeToNamespace, tag.attributeToNamespace) &&
-            //Objects.equals(attributeToNamespaceView, tag.attributeToNamespaceView) &&
             Objects.equals(attributes, tag.attributes) &&
-            //Objects.equals(attributesView, tag.attributesView) &&
-            Objects.equals(children, tag.children) &&
-            Objects.equals(childrenView, tag.childrenView);
+            Objects.equals(children, tag.children);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(namespace, name, values, valuesView, attributeToNamespace, attributes, children, childrenView);
+        return Objects.hash(namespace, name, values, attributeToNamespace, attributes, children);
     }
 
 }

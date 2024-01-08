@@ -16,15 +16,20 @@
  */
 package com.singingbush.sdl;
 
+import com.singingbush.sdl.annotations.Attribute;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -78,11 +83,110 @@ public class Parser {
 		this(new InputStreamReader(new FileInputStream(file), UTF_8));
 	}
 
+    /**
+     * For use with pojo's that have been annotated with the Tag annotation
+     * @param clazz a class that's annotated with Tag
+     * @param <T> the class type that will be returned
+     * @return a pojo of the given type
+     * @throws IOException If a problem is encountered with the reader
+     * @throws SDLParseException If the document is malformed
+     * @since 2.3.0
+     * @see com.singingbush.sdl.annotations.Tag
+     */
+    public <T> Optional<T> parse(final Class<T> clazz) throws IOException, SDLParseException {
+        if(!clazz.isAnnotationPresent(com.singingbush.sdl.annotations.Tag.class)) {
+            throw new IllegalArgumentException("class must be annotated with @Tag");
+        }
+
+        final String name = clazz.getAnnotation(com.singingbush.sdl.annotations.Tag.class).value();
+        final List<Tag> tags = this.parse().stream()
+            .filter(t -> name.equals(t.getName()))
+            .collect(Collectors.toList());
+
+        if(tags.isEmpty()) {
+            return Optional.empty();
+        }
+
+        if(tags.size() > 1) {
+            // need to call alternative method that can handle List<T>
+            throw new IllegalArgumentException(String.format("Multiple tags found named %s", name));
+        }
+
+        final T result;
+        try {
+            result = clazz.getDeclaredConstructor().newInstance();
+            // result = clazz.getDeclaredConstructor(String.class, String.class, LocalDate.class).newInstance(); // todo: support constructor injection
+        } catch (InstantiationException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+
+        final List<Object> values = tags.get(0).getValues();
+        final SortedMap<String, SdlValue<?>> attributes = tags.get(0).getAttributes();
+
+        for (final Field field : result.getClass().getDeclaredFields()) {
+            if(field.isAnnotationPresent(com.singingbush.sdl.annotations.Value.class)) {
+                try {
+                    field.setAccessible(true); // or field.trySetAccessible();
+                    field.set(result, values.get(0)); // todo: how does this work with multiple values, also handle errors
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            if(field.isAnnotationPresent(com.singingbush.sdl.annotations.Attribute.class)) {
+                final SdlValue<?> sdlValue = attributes.get(field.getName()); // also handle by @Attribute value
+                try {
+                    field.setAccessible(true);
+                    field.set(result, sdlValue.getValue());
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        //final Attribute[] attributeAnnotations = result.getClass().getDeclaredAnnotationsByType(Attribute.class);
+//
+        //for(final Attribute attr : attributeAnnotations) {
+        //    final SdlValue<?> sdlValue = attributes.get(attr.value());
+        //
+        //
+        //}
+
+        //tags.get(0).getValues();
+
+        return Optional.of(result);
+    }
+
+    /*
+     * For use with pojo's that have been annotated with the Tag annotation
+     * @param typeOfT a type that's annotated with Tag
+     * @param <T> the class type that will be returned
+     * @return
+     * @throws IOException If a problem is encountered with the reader
+     * @throws SDLParseException If the document is malformed
+     * @since 2.3.0
+     * @see com.singingbush.sdl.annotations.Tag
+     *
+    public <T> Optional<T> parse(final Type typeOfT) throws IOException, SDLParseException {
+        if(!typeOfT.getClass().isAnnotationPresent(com.singingbush.sdl.annotations.Tag.class)) {
+            throw new IllegalArgumentException("class must be annotated with @Tag");
+        }
+
+        return parse(typeOfT.getClass()); // todo
+    }
+    */
+
 	/**
 	 * @return A list of tags described by the input
 	 * @throws IOException If a problem is encountered with the reader
 	 * @throws SDLParseException If the document is malformed
 	 */
+    @NotNull
     public List<Tag> parse() throws IOException, SDLParseException {
 		final List<Tag> tags = new ArrayList<>();
 		List<Token> toks;
@@ -182,7 +286,7 @@ public class Parser {
 
 				valuesStartIndex = 3;
 			} else {
-				tag = new Tag(t0.getText());
+				tag = SDL.tag(t0.getText()).build();
 			}
 
 			// read values

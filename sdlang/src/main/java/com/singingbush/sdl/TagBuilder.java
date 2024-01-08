@@ -18,9 +18,10 @@ public class TagBuilder {
     private final String name;
     private String namespace;
     private String comment;
+    private LineCommentStyle commentStyle = LineCommentStyle.CPP;
     private List<SdlValue> values = new ArrayList<>();
     private List<Tag> children = new ArrayList<>();
-    private Map<String, SdlValue> attributes = new HashMap<>();
+    private Map<String, SdlValue<?>> attributes = new HashMap<>();
 
     /**
      * @param name must be a legal SDL identifier (see {@link SDL#validateIdentifier(String)})
@@ -49,7 +50,18 @@ public class TagBuilder {
      * @since 2.1.0
      */
     public TagBuilder withComment(@NotNull final String comment) {
+        return this.withComment(comment, LineCommentStyle.CPP);
+    }
+
+    /**
+     * @param comment a single line of text that will precede the tag when serialised
+     * @param commentStyle either C++ style "//", bash style "#", or lua style "--"
+     * @return this TagBuilder
+     * @since 2.3.0
+     */
+    public TagBuilder withComment(@NotNull final String comment, @NotNull final LineCommentStyle commentStyle) {
         this.comment = comment;
+        this.commentStyle = commentStyle;
         return this;
     }
 
@@ -60,7 +72,7 @@ public class TagBuilder {
      * @since 2.1.0
      */
     @NotNull
-    public TagBuilder withValue(@NotNull final SdlValue value) {
+    public TagBuilder withValue(@NotNull final SdlValue<?> value) {
         this.values.add(value);
         return this;
     }
@@ -133,7 +145,7 @@ public class TagBuilder {
      * @since 2.1.0
      */
     @NotNull
-    public TagBuilder withAttribute(@NotNull final String key, @NotNull final SdlValue value) {
+    public TagBuilder withAttribute(@NotNull final String key, @NotNull final SdlValue<?> value) {
         this.attributes.put(key, value);
         return this;
     }
@@ -145,7 +157,7 @@ public class TagBuilder {
      * @since 2.1.0
      */
     @NotNull
-    public TagBuilder withAttributes(@NotNull final Map<String, SdlValue> attributes) {
+    public TagBuilder withAttributes(@NotNull final Map<String, SdlValue<?>> attributes) {
         this.attributes.putAll(attributes);
         return this;
     }
@@ -159,7 +171,7 @@ public class TagBuilder {
     @NotNull
     public Tag build() {
         final Tag t = namespace != null? new Tag(namespace, name) : new Tag(name);
-        t.setComment(comment);
+        t.setComment(comment, commentStyle);
         values.forEach(t::addValue);
         children.forEach(t::addChild);
         t.setAttributes(attributes); // attributes.forEach(t::setAttribute);

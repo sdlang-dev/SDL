@@ -11,7 +11,16 @@
 
     <artifactId>sdlang</artifactId>
 
+    <name>SDLang</name>
+    <description>Support for SDLang (Simple Declarative Language)</description>
+
     <dependencies>
+        <dependency>
+            <groupId>com.singingbush</groupId>
+            <artifactId>sdlang-annotations</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>

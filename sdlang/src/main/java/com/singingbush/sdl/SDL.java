@@ -19,12 +19,15 @@ package com.singingbush.sdl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.*;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.SortedMap;
 import java.util.Base64;
 
@@ -35,7 +38,7 @@ import java.util.Base64;
  */
 public class SDL {
 
-    public static final SdlValue NULL = new SdlValue<>(null, SdlType.NULL);
+    public static final SdlValue<?> NULL = new SdlValue<>(null, SdlType.NULL);
 
 	/**
 	 * <p>The SDL standard date format "yyyy/MM/dd" or "y/M/d"</p>
@@ -222,7 +225,7 @@ public class SDL {
 	 *     type
 	 */
 //	@SuppressWarnings("unchecked")
-//	public static SdlValue coerceOrFail(final SdlValue value) {
+//	public static SdlValue<?> coerceOrFail(final SdlValue<?> value) {
 //		if(value == null)
 //			return null;
 //
@@ -347,6 +350,52 @@ public class SDL {
     }
 
     /**
+     *
+     * @param value
+     * @param sdlType should be a literal type: STRING, STRING_MULTILINE, CHARACTER, BOOLEAN, NUMBER, DATE, DATETIME, DURATION, BINARY, NULL
+     * @return
+     * @since 2.3.0
+     */
+    // experimental (keep for internal use for now)
+    static SdlValue<?> value(@NotNull final Object value, final SdlType sdlType) {
+        // STRING, STRING_MULTILINE, CHARACTER, BOOLEAN, NUMBER, DATE, DATETIME, DURATION, BINARY, NULL
+        switch (sdlType) {
+            case STRING:
+                return value(String.valueOf(value), false);
+            case STRING_MULTILINE:
+                return value(String.valueOf(value), true);
+            case CHARACTER:
+                return value((char) value);
+            case BOOLEAN:
+                return value((boolean) value);
+            case NUMBER:
+                // handle number types: int, long, float, double
+                if(Integer.class.isAssignableFrom(value.getClass())) {
+                    return value((int) value);
+                } else if(Long.class.isAssignableFrom(value.getClass())) {
+                    return value((long) value);
+                } else if(Float.class.isAssignableFrom(value.getClass())) {
+                    return value((float) value);
+                } else if(Double.class.isAssignableFrom(value.getClass())) {
+                    return value((double) value);
+                } else {
+                    throw new IllegalArgumentException(String.format("SdlType was NUMBER but value of type %s could not be assigned", value.getClass()));
+                }
+            case DATE:
+                return value((LocalDate) value);
+            case DATETIME:
+                return value((LocalDateTime) value);
+            case DURATION:
+                return value((Duration) value);
+            // case BINARY:
+            //     return value();
+            //     break;
+            default:
+                throw new IllegalArgumentException("Should be a literal type");
+        }
+    }
+
+    /**
      * @param value text to be converted to SDL
      * @return an SDL char
      * @since 2.1.0
@@ -441,7 +490,7 @@ public class SDL {
      * @return an SDL binary
      * @since 2.1.0
      */
-    public static SdlValue value(final byte[] value) {
+    public static SdlValue<?> value(final byte[] value) {
         return new SdlValue<>(value, SdlType.BINARY);
     }
 
@@ -455,7 +504,7 @@ public class SDL {
 	 * @throws NumberFormatException If the text represents a malformed number.
 	 */
 	@Deprecated
-	public static SdlValue value(String literal) {
+	public static SdlValue<?> value(String literal) {
 		if(literal==null) {
             throw new IllegalArgumentException("literal argument to SDL.value(String) cannot be null");
         }
@@ -515,13 +564,16 @@ public class SDL {
 	 * @throws IllegalArgumentException If the string is null or contains
 	 *     literals that cannot be parsed
 	 */
-	public static List list(@NotNull final String valueList) {
+	public static List<?> list(@NotNull final String valueList) {
 		if(valueList==null) {
             throw new IllegalArgumentException("valueList argument to SDL.list(String) cannot be null");
         }
 
 		try {
-			return new Tag("root").read(valueList).getChild("content").getValues();
+			return SDL.tag("root").build()
+                .read(valueList)
+                .getChild("content")
+                .getValues();
 		} catch(SDLParseException e) {
 			throw new IllegalArgumentException(e.getMessage());
 		}
@@ -555,13 +607,13 @@ public class SDL {
 	 * @throws IllegalArgumentException If the string is null or contains
 	 *     literals that cannot be parsed or the map is malformed
 	 */
-	public static SortedMap<String,SdlValue> map(@NotNull final String attributeString) {
+	public static SortedMap<String,SdlValue<?>> map(@NotNull final String attributeString) {
 		if(attributeString==null) {
             throw new IllegalArgumentException("attributeString argument to SDL.map(String) cannot be null");
         }
 
 		try {
-			return new Tag("root")
+			return SDL.tag("root").build()
                 .read("atts " + attributeString)
                 .getChild("atts")
                 .getAttributes();
@@ -569,4 +621,56 @@ public class SDL {
 			throw new IllegalArgumentException(e.getMessage());
 		}
 	}
+
+    /**
+     *
+     * @param obj a pojo that's annotated with Tag
+     * @param out an output stream to write the serialised data to
+     * @throws IOException if an I/O error occurs
+     * @since 2.3.0
+     * @see com.singingbush.sdl.annotations.Tag
+     */
+    public static void toSDL(@NotNull Object obj, @NotNull final OutputStream out) throws IOException {
+        out.write(convert(obj).toString().getBytes());
+        out.flush();
+    }
+
+    /**
+     *
+     * @param obj a pojo that's annotated with Tag
+     * @return a string of SDL that represents the annotated pojo
+     * @since 2.3.0
+     * @see com.singingbush.sdl.annotations.Tag
+     */
+    public static String toSDL(@NotNull Object obj) {
+        return convert(obj).toString();
+    }
+
+
+    // todo: should this live somewhere else??
+    private static Tag convert(@NotNull final Object obj) {
+        if(obj.getClass().isAnnotationPresent(com.singingbush.sdl.annotations.Tag.class)) {
+            final SdlAnnotationProcessor processor = new SdlAnnotationProcessor(obj);
+            return processor.process();
+        }
+        throw new IllegalArgumentException(obj.getClass().getSimpleName() + " does not have @Tag annotation");
+    }
+
+
+    public static <T> Optional<T> fromSDL(@NotNull final String sdl, @NotNull final Class<T> clazz) throws SDLParseException, IOException {
+        return SDL.fromSDL(new StringReader(sdl), clazz);
+    }
+
+//    public static <T> Optional<T> fromSDL(@NotNull final String sdl, @NotNull final Type typeOfT) throws SDLParseException {
+//        return SDL.fromSDL(new StringReader(sdl), typeOfT);
+//    }
+
+    public static <T> Optional<T> fromSDL(@NotNull final Reader reader, @NotNull final Class<T> clazz) throws SDLParseException, IOException {
+        return new Parser(reader).parse(clazz);
+    }
+
+//    public static <T> Optional<T> fromSDL(@NotNull final Reader reader, @NotNull final Type typeOfT) {
+//        return new Parser(reader).parse(typeOfT);
+//    }
+
 }

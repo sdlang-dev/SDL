@@ -11,6 +11,9 @@
 
     <artifactId>sdlang-annotations</artifactId>
 
+    <name>SDLang Annotations</name>
+    <description>Support for SDLang (Simple Declarative Language)</description>
+
     <dependencies>
         <dependency>
             <groupId>org.jetbrains</groupId>

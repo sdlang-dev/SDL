@@ -22,7 +22,7 @@ class Token {
     private final int position;
     private final int size;
 
-    private SdlValue sdlValue;
+    private SdlValue<?> sdlValue;
 
     private final boolean punctuation;
     private final boolean literal;
@@ -144,7 +144,7 @@ class Token {
      * @return the SdlValue for this Token
      * @since 2.0.0
      */
-    public SdlValue getSdlValue() {
+    public SdlValue<?> getSdlValue() {
         return sdlValue;
     }
 
