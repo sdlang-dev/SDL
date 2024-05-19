@@ -60,7 +60,7 @@ Since then there's been no activity in that repository and it seems that issues 
 As the project appears to be abandoned I've forked it with the goal of
 
 - [x] Adding more unit tests
-- [x] Enabling continuous integration using [travis-ci.org](travis-ci.org)
+- [x] Enabling continuous integration using GitHub Actions
 - [x] Reporting on Test Coverage using [coveralls.io](coveralls.io)
 - [x] Fixing existing bugs
 - [x] Overhaul the project and start rewriting the codebase
