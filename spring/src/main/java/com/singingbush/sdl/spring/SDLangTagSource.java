@@ -28,13 +28,13 @@ public class SDLangTagSource extends PropertySource<List<Tag>> {
     @Override
     @Nullable
     public Object getProperty(String valueExpression) {
-        super.logger.debug(String.format("Will lookup SDL value using : \"%s\"", valueExpression));
-
         if (ObjectUtils.isEmpty(valueExpression)) {
             throw new IllegalArgumentException("arg cannot be empty");
         }
-        // the value expression could be a name for an SDL tag or a name with attribute, eg: "person|age"
 
+        super.logger.debug(String.format("Retrieving SDL tag using : \"%s\"", valueExpression));
+
+        // the value expression could be a name for an SDL tag or a name with attribute, eg: "person|age"
         final String[] parts = valueExpression.split("\\|", 2);
 
         if (Arrays.stream(parts).anyMatch(ObjectUtils::isEmpty)) {
@@ -47,7 +47,8 @@ public class SDLangTagSource extends PropertySource<List<Tag>> {
         return result
             .flatMap(tag -> {
                 // get value or attribute
-                final Object sdlValue = tag.getSdlValue() != null ? tag.getSdlValue().getValue() : null;
+                final List<Object> values = tag.getValues();
+                final Object sdlValue = values.size() == 1 ? values.get(0) : values;
                 final Object valOrAttr = parts.length > 1 ? tag.getAttribute(parts[1]) : sdlValue;
                 return Optional.ofNullable(valOrAttr);
             })
@@ -71,7 +72,7 @@ public class SDLangTagSource extends PropertySource<List<Tag>> {
             final String nme = matcher.group(1);
             final int index = Integer.parseInt(matcher.group(2));
 
-            super.logger.debug(String.format("Getting %s at index %s", nme, index));
+//            super.logger.debug(String.format("Getting %s at index %s", nme, index));
 
             tag = Optional.ofNullable(tags.stream()
                 .filter(t -> t.getName().equals(nme))

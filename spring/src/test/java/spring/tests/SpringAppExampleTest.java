@@ -27,6 +27,9 @@ public class SpringAppExampleTest {
     @Value("${title}")
     private String titleName;
 
+    @Value("${bookmarks}")
+    private int[] bookmarks;
+
     // author "Peter Parker" email="peter@example.org" active=true
     @Value("${author}")
     private String authorName;
@@ -52,6 +55,19 @@ public class SpringAppExampleTest {
     @Value("${contents.section.paragraph[1]}") // should be "This is the second paragraph"
     private String paragraph1;
 
+    @DisplayName("Basic SDL tag: 'title \"Hello, World\"'")
+    @Test
+    public void testSdlTagValueByName_basic() {
+        assertNotNull(titleName);
+        assertEquals("Hello, World", titleName);
+    }
+
+    @DisplayName("Basic SDL tag: 'bookmarks 12 15 188 1234'")
+    @Test
+    public void testSdlTagValueByName_Array() {
+        assertNotNull(bookmarks);
+        assertArrayEquals(new int[] {12, 15, 188, 1234}, bookmarks);
+    }
 
     @DisplayName("Make sure a SDL node can be found by name and the value found (String)")
     @Test
