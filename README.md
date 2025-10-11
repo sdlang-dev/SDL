@@ -2,7 +2,7 @@
 ============
 
 ![Java CI](https://github.com/sdlang-dev/SDL/workflows/Java%20CI/badge.svg)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.singingbush/sdlang/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.singingbush/sdlang)
+[![Maven Central](https://maven-badges.sml.io/sonatype-central/com.singingbush/sdlang/badge.svg)](https://maven-badges.sml.io/sonatype-central/com.singingbush/sdlang)
 [![Javadocs](https://www.javadoc.io/badge/com.singingbush/sdlang.svg)](https://www.javadoc.io/doc/com.singingbush/sdlang)
 [![Coverage Status](https://coveralls.io/repos/github/SingingBush/SDL/badge.svg?branch=master)](https://coveralls.io/github/SingingBush/SDL?branch=master)
 
@@ -18,11 +18,26 @@ Releases for v2 are available from Maven Central under the com.singingbush group
     <dependency>
         <groupId>com.singingbush</groupId>
         <artifactId>sdlang</artifactId>
-        <version>2.2.0</version>
+        <version>2.2.1</version>
     </dependency>
 ```
 
-The v2 repo has been transferred to the sdlang-dev github organisation so that continued development and a planned v3 can be worked on as a joint effort. For now v2 releases will continue with the same groupId and artifactId. The next major release will likely be under a new groupId.
+There are additional packages for *sdlang-annotations* and *sdlang-spring* which can optionally be added for additional functionality. The annotations allow pojo's to be easily annotated with fields that map to an SDL tag and the spring package allows Spring users to use an sdl file as a _PropertySource_
+
+```xml
+    <dependency>
+        <groupId>com.singingbush</groupId>
+        <artifactId>sdlang-annotations</artifactId>
+        <version>2.2.1</version>
+    </dependency>
+    <dependency>
+        <groupId>com.singingbush</groupId>
+        <artifactId>sdlang-spring</artifactId>
+        <version>2.2.1</version>
+    </dependency>
+```
+
+The v2 repo has been transferred to the sdlang-dev github organisation so that continued development and a planned v3 can be worked on as a joint effort.
 
 ### Usage
 
